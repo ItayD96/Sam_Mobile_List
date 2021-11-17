@@ -2,12 +2,14 @@
 
 import json
 from optparse import OptionParser
-
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
+
 
 
 def main():
+
     # parser options to choose the output name
     parser = OptionParser()
     parser.add_option('-o', '--outfile', help='Final Json file name')
@@ -32,13 +34,14 @@ def main():
     src_model_list = model_list.content
     soup_model_list = BeautifulSoup(src_model_list, 'lxml')
     model_list = soup_model_list.find_all("strong")  # Choose the bold options
-    for model in model_list:
+    for model in tqdm(model_list):
         if str(model.get_text())[:6].lower() == 'galaxy':  # Only thats starts with galaxy
             model = model.get_text().replace(' ', '-').replace('+', '-plus').lower()  # Same variable
+            #print(model)
             # Get the main model page for the firmwares check valid address
             result_main = requests.get('https://www.sammobile.com/samsung/' + model + '/firmware/')
             if result_main.status_code != 200:  # Check valid page
-                print('Error , status code != 200,Model :' + model)
+                #print('Error , status code != 200,Model :' + model)
                 continue
             else:
                 # get all the buttons that mean avail options for firmware
