@@ -1,18 +1,25 @@
 ﻿#!/isr/bin/python3
 
 import json
-from optparse import OptionParser
+from optparse import OptionParser  # For call option
+import os
+import pandas as pd  # Csv option
+# Url get info
 import requests
 from bs4 import BeautifulSoup
+# Progress bar
 from tqdm import tqdm
 
 
+# Check diff and sent a mail to myself
+
 
 def main():
-
     # parser options to choose the output name
     parser = OptionParser()
-    parser.add_option('-o', '--outfile', help='Final Json file name')
+    parser.add_option('-o', '--outfile', help='Final Json file name [Defulte = output.json]')
+    parser.add_option('-c', '--csv', help='If you want csv file add the name [Optional]')
+    parser.add_option('-e', '--email', help='optional to get email if there is diff , Enter your mail.')
     (options, args) = parser.parse_args()
     # check or create the output json file
     if options.outfile is None:
@@ -22,6 +29,7 @@ def main():
             output = open(options.outfile, 'w')
         else:
             output = open(options.outfile + '.json', 'w')
+    output.write('{\n\t"devices": [\n')
 
     # Json headers
     headers = ["Model", "Firmware", "Country", "Date", "PDA", "Version"]
@@ -37,11 +45,14 @@ def main():
     for model in tqdm(model_list):
         if str(model.get_text())[:6].lower() == 'galaxy':  # Only thats starts with galaxy
             model = model.get_text().replace(' ', '-').replace('+', '-plus').lower()  # Same variable
-            #print(model)
+            # print(model)
+            # TODO remove this if - only for debug
+            if model != 'galaxy-a10':
+                continue
             # Get the main model page for the firmwares check valid address
             result_main = requests.get('https://www.sammobile.com/samsung/' + model + '/firmware/')
             if result_main.status_code != 200:  # Check valid page
-                #print('Error , status code != 200,Model :' + model)
+                # print('Error , status code != 200,Model :' + model)
                 continue
             else:
                 # get all the buttons that mean avail options for firmware
@@ -69,17 +80,30 @@ def main():
                                 if i == 0:  # Update the model every time
                                     dict1[str(headers[i])] = model.strip('\n')
                                     i += 1
-
                                 dict1[str(headers[i])] = tmp.strip('\n')  # strip('\n') to cut of \n , inset to the json
                                 if i == 5:
                                     json.dump(dict1, output, indent=6, sort_keys=False)
                                     i = -1  # Reset the counter
-
+                                    output.write(',')
                                 i += 1
 
+    #TODO - Delete the last ',' and remove this dump - bad patch
+    json.dump(dict1, output, indent=6, sort_keys=False)
+    output.write(']\n}')
     print('Finish , File named ' + output.name + ' has created')
-
     output.close()
+
+    print('Check if --csv is needed')
+    print(type(output))
+    if options.csv is not None:
+        print('csv isnt none !!')
+        df = pd.read_json('output.json', lines=True)
+        if options.csv[-4:] == '.csv':
+            csv_name = options.csv
+        else:
+            csv_name = options.csv + '.csv'
+        print('csv name is :' + csv_name)
+        df.to_csv(csv_name, index=None)
 
 
 if __name__ == "__main__":
