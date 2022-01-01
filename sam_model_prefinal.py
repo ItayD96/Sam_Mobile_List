@@ -53,11 +53,6 @@ def main():
     models = get_all_models_from_link(sam_mobile_models)
     df_list = []
     for model in tqdm(models):
-        # print(model)
-        # # TODO : Remove !
-        if model != 'galaxy-a10' and model != 'galaxy-a30':
-            continue
-
         # Get the main model page for the firmwares check valid address
         result_main = requests.get(sam_mobile_models + model + '/firmware/')
         if result_main.status_code != 200:  # Check valid page
@@ -152,57 +147,3 @@ def sent_email(receiver_address: str, diff: str):
 if __name__ == "__main__":
     main()
     exit()
-
-"""
-    # Json headers
-    Headers = ["Model", "Firmware", "Country/Carrier", "Date", "PDA", "Version"]
-    # Header counter
-    i = 0
-    
-    # init json file
-    # output.write('[\n')
-
-
-                src = result.content
-                soup = BeautifulSoup(src, 'lxml')
-                table = soup.find('div', attrs={'id': firmware})  # find the main table
-                if table is None:
-                    continue
-                else:
-                    today = "".join(str(date.today()))
-                    last_update = today
-                    for row in table.findAll('td'):  # find all the rows
-                        tmp = row.get_text()
-                        if tmp not in Headers:
-                            if i == 0:  # Update the model every time
-                                dict1[str(Headers[i])] = model
-                                i += 1
-                            # for some reason its duplicate
-                            elif i == 3:  # the date field
-                                ver_date = tmp.strip('\n')
-                                if ver_date < last_update:
-                                    # don't add ',' at the beginning
-                                    if last_update is not today:
-                                        output.write(',')
-                                    last_update = ver_date
-                                else:
-                                    # to get out from this model
-                                    break
-                            dict1[str(Headers[i])] = tmp.strip('\n')  # strip('\n') to cut of \n , inset to the json
-                            if i == 5:
-                                json.dump(dict1, output, indent=6, sort_keys=False)
-                                i = -1  # Reset the counter
-                            i += 1
-    output.write(']')
-
-    
-def get_csv(csv_name: str, output_name: str):
-    with open(output_name) as f:
-        output = json.load(f)
-    if csv_name[-4:] != '.csv':
-        csv_name = csv_name + '.csv'
-    print('csv file named : ' + csv_name + ' has created')
-    csv_data = pd.DataFrame(output)
-    csv_data.to_csv(str(csv_name))
-    f.close()
-"""
