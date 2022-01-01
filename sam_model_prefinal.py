@@ -1,6 +1,5 @@
 ﻿#!/isr/bin/python3
 
-import json
 import os
 # Mail library
 import smtplib
@@ -23,15 +22,11 @@ from tqdm import tqdm
 
 import config
 
-# Json headers
-Headers = ["Model", "Firmware", "Country/Carrier", "Date", "PDA", "Version"]
-
 
 def main():
     # parser options to choose the output name
     parser = OptionParser()
     parser.add_option('-o', '--outfile', help='Final csv file name [Defulte = output.csv]')
-    parser.add_option('-c', '--csv', help='If you want csv file add the name [Optional]')
     parser.add_option('-e', '--email', help='optional to get email if there is diff , Enter your mail.')
     parser.add_option('-C', '--country', help='optional to check for specific **country code**.')
     (options, args) = parser.parse_args()
@@ -44,14 +39,11 @@ def main():
             output = open(options.outfile, 'w')
         else:
             output = open(options.outfile + '.csv', 'w')
-    # init json file
-    # output.write('[\n')
 
     # receiver_address = options.email
     receiver_address = 'itaydahan96@gmail.com'
 
-    # Header counter
-    i = 0
+
     # Tmp dict
     dict1 = {}
     # Sam-mobile link
@@ -59,11 +51,13 @@ def main():
 
     # Get the models from sam-mobile site
     models = get_all_models_from_link(sam_mobile_models)
-
+    df_list = []
     for model in tqdm(models):
-        # TODO : Remove !
-        if model != 'galaxy-a10':
+        # print(model)
+        # # TODO : Remove !
+        if model != 'galaxy-a10' and model != 'galaxy-a30':
             continue
+
         # Get the main model page for the firmwares check valid address
         result_main = requests.get(sam_mobile_models + model + '/firmware/')
         if result_main.status_code != 200:  # Check valid page
@@ -81,30 +75,30 @@ def main():
                 if result.status_code != 200:  # Check valid page
                     continue
                 # get all data from the main table
-                df_list = pd.read_html(result.text)  # this parses all the tables in webpages to a list
-                df = df_list[0]
-                # print(df.to_string())
-                output.write(df.to_string())
-                df.to_csv(str(output.name).replace('json','csv'))
+                data = pd.read_html(result.text, header=None)
+                df_list.append(data[0])
 
+    merged = pd.concat(df_list, ignore_index=True)
+    # df_list.to_csv(str(output.name), index=False)
+    merged.to_csv(str(output.name), index=False)
     print('Finish , File named ' + output.name + ' has created')
     output.close()
 
-    print('check diff with output.json and ' + output.name)
-    diff = sp.getoutput('diff output.json ' + output.name)
-    diff = ''
+    # TODO - diff with another version or the last one
+    print('check diff with output.csv and ' + output.name)
+    diff = sp.getoutput('diff output.csv ' + output.name)
     if diff != '':
-        print('There is a diff - Mail Sent')
         if options.email is not None:
-            sent_email(receiver_address, output.name)
+            print('There is a diff - Mail Sent')
+            sent_email(receiver_address, diff)
+        else:
+            print('There is a diff')
+
     else:
         print('There is nothing new :)')
 
-    os.system('cp ' + output.name + ' output.json')
-
-    # print('Check if --csv is needed')
-    if options.csv is not None:
-        get_csv(options.csv, output.name)
+    # Move current to output.csv to check with it later
+    os.system('cp ' + output.name + ' output.csv')
 
 
 def get_all_models_from_link(link: str) -> list:
@@ -155,23 +149,19 @@ def sent_email(receiver_address: str, diff: str):
     session.quit()
 
 
-def get_csv(csv_name: str, output_name: str):
-    with open(output_name) as f:
-        output = json.load(f)
-    if csv_name[-4:] != '.csv':
-        csv_name = csv_name + '.csv'
-    print('csv file named : ' + csv_name + ' has created')
-    csv_data = pd.DataFrame(output)
-    csv_data.to_csv(str(csv_name))
-    f.close()
-
-
 if __name__ == "__main__":
     main()
     exit()
 
-
 """
+    # Json headers
+    Headers = ["Model", "Firmware", "Country/Carrier", "Date", "PDA", "Version"]
+    # Header counter
+    i = 0
+    
+    # init json file
+    # output.write('[\n')
+
 
                 src = result.content
                 soup = BeautifulSoup(src, 'lxml')
@@ -205,4 +195,14 @@ if __name__ == "__main__":
                             i += 1
     output.write(']')
 
+    
+def get_csv(csv_name: str, output_name: str):
+    with open(output_name) as f:
+        output = json.load(f)
+    if csv_name[-4:] != '.csv':
+        csv_name = csv_name + '.csv'
+    print('csv file named : ' + csv_name + ' has created')
+    csv_data = pd.DataFrame(output)
+    csv_data.to_csv(str(csv_name))
+    f.close()
 """
